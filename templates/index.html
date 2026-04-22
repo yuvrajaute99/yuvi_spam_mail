@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Spam Detector | AI-Powered Email & SMS Classification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #51cf66;
+            --danger: #ff6b6b;
+            --warning: #ffa94d;
+            --info: #4dabf7;
+            --bg-light: #f8f9fa;
+            --bg-white: #ffffff;
+            --text-dark: #2c3e50;
+            --text-gray: #6c757d;
+            --border-light: #dee2e6;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.12);
+            --shadow-lg: 0 16px 40px rgba(0,0,0,0.15);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-dark);
+            background-attachment: fixed;
+            overflow-x: hidden;
+            padding-top: 0;
+            margin-top: 0;
+        }
+
+        /* ===== RIBBON HEADER ===== */
+        .ribbon-header {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            padding: 25px 20px;
+            margin: 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            border-bottom: 3px solid rgba(255,255,255,0.2);
+            width: 100%;
+        }
+
+        .ribbon-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+            flex-wrap: wrap;
+            padding: 0 20px;
+        }
+
+        .ribbon-nav {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .ribbon-nav button,
+        .ribbon-nav-btn {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ribbon-nav button::before,
+        .ribbon-nav-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .ribbon-nav button:hover,
+        .ribbon-nav-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        .ribbon-nav button:hover::before,
+        .ribbon-nav-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .ribbon-nav button.active,
+        .ribbon-nav-btn.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+        }
+
+        .ribbon-stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .ribbon-stat {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.15);
+            padding: 14px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            min-width: 100px;
+            justify-content: center;
+        }
+
+        .ribbon-stat:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .ribbon-stat-label {
+            font-size: 0.85em;
+            color: rgba(255,255,255,0.9);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .ribbon-stat-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .ribbon-divider {
+            width: 2px;
+            height: 45px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 1px;
+            display: none;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+
+        @media (min-width: 768px) {
+            .ribbon-divider {
+                display: block;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .ribbon-content {
+                gap: 30px;
+                padding: 0 15px;
+            }
+
+            .ribbon-nav {
+                gap: 8px;
+            }
+
+            .ribbon-nav button,
+            .ribbon-nav-btn {
+                padding: 10px 16px;
+                font-size: 0.85em;
+            }
+
+            .ribbon-stats {
+                gap: 12px;
+            }
+
+            .ribbon-stat {
+                padding: 12px 16px;
+                min-width: 80px;
+            }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            width: 100%;
+        }
+
+        /* ===== HEADER & NAVIGATION ===== */
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+            padding: 50px 30px 40px;
+            animation: slideDown 0.8s ease-out;
+            position: relative;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            border-radius: 2px;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        header h1 {
+            font-size: clamp(2.5em, 6vw, 4em);
+            margin-bottom: 15px;
+            font-weight: 800;
+            text-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, white 0%, rgba(255,255,255,0.9) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+        }
+
+        header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            animation: growWidth 1s ease-out 0.5s backwards;
+        }
+
+        @keyframes growWidth {
+            from {
+                width: 0;
+            }
+            to {
+                width: 80px;
+            }
+        }
+
+        header p {
+            font-size: clamp(1em, 2.5vw, 1.3em);
+            opacity: 0.95;
+            font-weight: 400;
+            margin-top: 20px;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.9);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 40px;
+            background: rgba(255,255,255,0.12);
+            padding: 15px;
+            border-radius: 12px;
+            flex-wrap: wrap;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            animation: slideUp 0.6s ease-out 0.2s backwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .nav-btn {
+            padding: 12px 28px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex: 1;
+            min-width: 130px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+
+        .nav-btn.active {
+            background: white;
+            color: var(--primary);
+            border-color: white;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        /* ===== TAB CONTENT ===== */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--bg-white);
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            margin: 0 auto 40px auto;
+            border: 1px solid rgba(255,255,255,0.6);
+            max-width: 900px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: clamp(1.8em, 4vw, 2.2em);
+            font-weight: 700;
+            position: relative;
+            display: inline-block;
+        }
+
+        .card h2::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 2px;
+        }
+
+        .card-subtitle {
+            color: var(--text-gray);
+            margin-bottom: 35px;
+            font-size: 1.1em;
+            font-weight: 400;
+            line-height: 1.6;
+            max-width: 600px;
+        }
+
+        /* ===== FORMS ===== */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 1em;
+        }
+
+        textarea, input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--border-light);
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: 'Poppins', sans-serif;
+            resize: vertical;
+            transition: all 0.3s ease;
+            background: var(--bg-light);
+        }
+
+        textarea:focus, input[type="text"]:focus, input[type="file"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg-white);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            min-height: 180px;
+            resize: vertical;
+        }
+
+        /* ===== BUTTONS ===== */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex: 1;
+            min-width: 150px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success) 0%, #40c057 100%);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            margin-top: 15px;
+        }
+
+        /* ===== RESULTS ===== */
+        .result-container {
+            margin-top: 30px;
+            padding: 30px;
+            border-radius: 14px;
+            display: none;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        .result-spam {
+            background: linear-gradient(135deg, rgba(255,107,107,0.1) 0%, rgba(255,107,107,0.05) 100%);
+            border-left: 6px solid var(--danger);
+            border-top-left-radius: 14px;
+            border-bottom-left-radius: 14px;
+        }
+
+        .result-ham {
+            background: linear-gradient(135deg, rgba(81,207,102,0.1) 0%, rgba(81,207,102,0.05) 100%);
+            border-left: 6px solid var(--success);
+            border-top-left-radius: 14px;
+            border-bottom-left-radius: 14px;
+        }
+
+        .result-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .result-spam .result-title {
+            color: var(--danger);
+        }
+
+        .result-ham .result-title {
+            color: var(--success);
+        }
+
+        .result-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .confidence-section {
+            margin-bottom: 25px;
+        }
+
+        .confidence-label {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-dark);
+            font-size: 1em;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid var(--border-light);
+            box-shadow: inset var(--shadow-sm);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            font-weight: 600;
+            font-size: 0.75em;
+            color: white;
+        }
+
+        .confidence-value {
+            margin-top: 12px;
+            font-weight: 700;
+            font-size: 1.3em;
+            color: var(--primary);
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .detail-item {
+            padding: 16px;
+            background: var(--bg-light);
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .detail-item:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--text-gray);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: 1.3em;
+            color: var(--text-dark);
+            margin-top: 6px;
+            font-weight: 700;
+        }
+
+        /* ===== STATS ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--bg-white);
+            padding: 30px;
+            border-radius: 14px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-number {
+            font-size: 2.8em;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 15px 0;
+        }
+
+        .stat-label {
+            color: var(--text-gray);
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+
+        /* ===== TABLES ===== */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+            background: var(--bg-white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .history-table thead {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .history-table th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85em;
+        }
+
+        .history-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .history-table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .history-table tbody tr:hover {
+            background: var(--bg-light);
+            box-shadow: inset 0 0 10px rgba(102, 126, 234, 0.08);
+        }
+
+        .badge {
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+        }
+
+        .badge-spam {
+            background: linear-gradient(135deg, rgba(255,107,107,0.2) 0%, rgba(255,107,107,0.1) 100%);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .badge-ham {
+            background: linear-gradient(135deg, rgba(81,207,102,0.2) 0%, rgba(81,207,102,0.1) 100%);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        /* ===== EXAMPLES ===== */
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .example-card {
+            background: var(--bg-white);
+            padding: 25px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid var(--border-light);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .example-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102,126,234,0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .example-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .example-card:hover::before {
+            left: 100%;
+        }
+
+        .example-title {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+
+        .example-text {
+            color: var(--text-gray);
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        /* ===== ALERTS & MESSAGES ===== */
+        .alert {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            animation: slideDown 0.4s ease-out;
+            border-left: 4px solid;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: rgba(81,207,102,0.1);
+            border-left-color: var(--success);
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: rgba(255,107,107,0.1);
+            border-left-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .alert-info {
+            background: rgba(102,126,234,0.1);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.05) 100%);
+            border-left: 4px solid var(--primary);
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        /* ===== LOADING SPINNER ===== */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid rgba(102,126,234,0.2);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2em;
+            }
+
+            header p {
+                font-size: 1em;
+            }
+
+            .card {
+                padding: 25px;
+            }
+
+            .result-content {
+                grid-template-columns: 1fr;
+            }
+
+            .result-details {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-tabs {
+                flex-direction: column;
+            }
+
+            .nav-btn {
+                min-width: 100%;
+            }
+
+            button {
+                min-width: 100%;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .examples-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== UTILITY CLASSES ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-gray);
+        }
+
+        .empty-state-icon {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+        }
+
+        .center-text {
+            text-align: center;
+        }
+
+        h3 {
+            color: var(--primary);
+            margin: 30px 0 15px 0;
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        p {
+            line-height: 1.6;
+            color: var(--text-gray);
+        }
+
+        strong {
+            color: var(--text-dark);
+            font-weight: 700;
+        }
+
+        ol, ul {
+            margin-left: 20px;
+            line-height: 2;
+        }
+
+        ol li, ul li {
+            color: var(--text-gray);
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== RIBBON HEADER ===== -->
+    <div class="ribbon-header">
+        <div class="ribbon-content">
+            <!-- Centered Navigation -->
+            <div class="ribbon-nav">
+                <button class="ribbon-nav-btn active" data-tab="predict">🎯 PREDICT</button>
+                <button class="ribbon-nav-btn" data-tab="batch">📁 BATCH</button>
+                <button class="ribbon-nav-btn" data-tab="examples">📚 EXAMPLES</button>
+                <button class="ribbon-nav-btn" data-tab="analytics">📊 ANALYTICS</button>
+                <button class="ribbon-nav-btn" data-tab="about">ℹ️ ABOUT</button>
+            </div>
+
+            <!-- Divider -->
+            <div class="ribbon-divider"></div>
+
+            <!-- Quick Stats -->
+            <div class="ribbon-stats">
+                <div class="ribbon-stat">
+                    <span class="ribbon-stat-label">📊 Total</span>
+                    <span class="ribbon-stat-value" id="ribbon-total">0</span>
+                </div>
+                <div class="ribbon-stat">
+                    <span class="ribbon-stat-label">🚨 Spam</span>
+                    <span class="ribbon-stat-value" id="ribbon-spam" style="color: #ff6b6b;">0</span>
+                </div>
+                <div class="ribbon-stat">
+                    <span class="ribbon-stat-label">✅ Legit</span>
+                    <span class="ribbon-stat-value" id="ribbon-legit" style="color: #51cf66;">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>🔍 Spam Detector Pro</h1>
+            <p>AI-Powered Email & SMS Classification | Real-time Detection with Confidence Scoring</p>
+        </header>
+
+        <!-- Old nav tabs hidden, using ribbon nav instead -->
+        <div class="nav-tabs" style="display: none;">
+            <button class="nav-btn active" data-tab="predict">🎯 Predict</button>
+            <button class="nav-btn" data-tab="batch">📁 Batch</button>
+            <button class="nav-btn" data-tab="examples">📚 Examples</button>
+            <button class="nav-btn" data-tab="analytics">📊 Analytics</button>
+            <button class="nav-btn" data-tab="about">ℹ️ About</button>
+        </div>
+
+        <!-- PREDICT TAB -->
+        <div id="predict" class="tab-content active">
+            <div class="card">
+                <h2>🔍 Single Message Analysis</h2>
+                <p class="card-subtitle">Enter your message below to detect if it's spam or legitimate.</p>
+                
+                <form id="predictForm">
+                    <div class="form-group">
+                        <label for="messageInput">Message Content</label>
+                        <textarea id="messageInput" placeholder="Type or paste an email/SMS message here..." required></textarea>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div class="button-group" style="flex: 1; min-width: 250px;">
+                            <button type="submit" id="predictBtn">🔍 Analyze Message</button>
+                            <button type="reset" class="btn-secondary">🗑️ Clear</button>
+                        </div>
+                        <span id="charCount" style="color: var(--text-gray); font-weight: 600; font-size: 1.05em;">0 characters</span>
+                    </div>
+                </form>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p style="color: var(--text-gray); font-weight: 500;">Analyzing your message...</p>
+                </div>
+
+                <div id="resultContainer" class="result-container">
+                    <div class="result-title" id="resultTitle"></div>
+                    <div class="result-content">
+                        <div>
+                            <div class="confidence-section">
+                                <div class="confidence-label">✨ Confidence Score</div>
+                                <div class="progress-bar">
+                                    <div id="progressFill" class="progress-fill"></div>
+                                </div>
+                                <div class="confidence-value" id="confidenceValue">0%</div>
+                            </div>
+                        </div>
+                        <div id="resultDetails" class="result-details"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BATCH PROCESSING TAB -->
+        <div id="batch" class="tab-content">
+            <div class="card">
+                <h2>📁 Batch Processing</h2>
+                <p class="card-subtitle">Upload a CSV file with a 'message' column to process multiple messages at once.</p>
+                
+                <div class="info-box">
+                    <strong>📋 CSV Format:</strong> Your file should have a column named 'message' containing the text to analyze.
+                </div>
+
+                <form id="batchForm">
+                    <div class="form-group">
+                        <label for="csvFile">Select CSV File</label>
+                        <input type="file" id="csvFile" accept=".csv" required>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="submit" id="processBatchBtn">🚀 Process All Messages</button>
+                        <button type="reset" class="btn-secondary">🗑️ Clear</button>
+                    </div>
+                </form>
+
+                <div id="batchLoading" class="loading">
+                    <div class="spinner"></div>
+                    <p id="batchProgress" style="color: var(--text-gray); font-weight: 500;">Processing messages...</p>
+                </div>
+
+                <div id="batchResultContainer" class="result-container">
+                    <div style="margin-bottom: 30px;">
+                        <h3>✅ Processing Complete</h3>
+                        <p id="batchSummary" style="margin-top: 15px; font-size: 1.05em;"></p>
+                    </div>
+                    <table id="resultsTable" class="history-table"></table>
+                    <button class="btn-download btn-success" id="downloadBtn" style="color: white;">📥 Download Results as CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXAMPLES TAB -->
+        <div id="examples" class="tab-content">
+            <div class="card">
+                <h2>📚 Try Example Messages</h2>
+                <p class="card-subtitle">Click any example to see how the detector works instantly.</p>
+
+                <h3 style="color: var(--danger); margin-top: 40px;">🚨 Spam Examples</h3>
+                <div class="examples-grid" id="spamExamples"></div>
+
+                <h3 style="color: var(--success); margin-top: 40px;">✅ Legitimate Examples</h3>
+                <div class="examples-grid" id="hamExamples"></div>
+            </div>
+        </div>
+
+        <!-- ANALYTICS TAB -->
+        <div id="analytics" class="tab-content">
+            <div class="card">
+                <h2>📊 Analytics Dashboard</h2>
+                
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-label">📊 Total Predictions</div>
+                        <div class="stat-number" id="totalPredictions">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: var(--danger);">
+                        <div class="stat-label">🚨 Spam Detected</div>
+                        <div class="stat-number" id="spamCount" style="color: var(--danger);">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: var(--success);">
+                        <div class="stat-label">✅ Legitimate</div>
+                        <div class="stat-number" id="hamCount" style="color: var(--success);">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: var(--info);">
+                        <div class="stat-label">📈 Spam Rate</div>
+                        <div class="stat-number" id="spamRate" style="color: var(--info);">0%</div>
+                    </div>
+                </div>
+
+                <h3>📜 Prediction History</h3>
+                <div id="historyContainer" style="margin-top: 25px;"></div>
+            </div>
+        </div>
+
+        <!-- ABOUT TAB -->
+        <div id="about" class="tab-content">
+            <div class="card">
+                <h2>ℹ️ About This Application</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px;">
+                    <div>
+                        <h3>🤖 How It Works</h3>
+                        <ol style="line-height: 2;">
+                            <li><strong>Text Preprocessing:</strong> Cleans and normalizes input text</li>
+                            <li><strong>Stop Word Removal:</strong> Removes common filler words</li>
+                            <li><strong>Stemming:</strong> Reduces words to their root forms</li>
+                            <li><strong>TF-IDF Vectorization:</strong> Converts text to numerical features</li>
+                            <li><strong>Classification:</strong> Predicts spam or legitimate</li>
+                            <li><strong>Confidence Scoring:</strong> Shows prediction certainty</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h3>📊 Model Details</h3>
+                        <div style="line-height: 2;">
+                            <p><strong>Algorithm:</strong> Naive Bayes Classifier</p>
+                            <p><strong>ML Framework:</strong> scikit-learn 1.3+</p>
+                            <p><strong>NLP Processing:</strong> NLTK</p>
+                            <p><strong>Feature Extraction:</strong> TF-IDF Vectorizer</p>
+                            <p><strong>Training Data:</strong> SMS Spam Collection Dataset</p>
+                            <p><strong>Total Features:</strong> 5000+ dimensions</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, rgba(102,126,234,0.08) 0%, rgba(118,75,162,0.08) 100%); border-radius: 14px; border-left: 4px solid var(--primary);">
+                    <h3>🛠️ Technology Stack</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; margin-top: 20px;">
+                        <div>
+                            <strong style="display: block; margin-bottom: 12px; color: var(--primary);">Backend</strong>
+                            <p style="margin: 0;">Python 3.10+</p>
+                            <p style="margin: 8px 0;">FastAPI / Flask</p>
+                            <p style="margin: 8px 0;">Uvicorn</p>
+                        </div>
+                        <div>
+                            <strong style="display: block; margin-bottom: 12px; color: var(--primary);">ML/NLP</strong>
+                            <p style="margin: 0;">scikit-learn</p>
+                            <p style="margin: 8px 0;">NLTK</p>
+                            <p style="margin: 8px 0;">NumPy / Pandas</p>
+                        </div>
+                        <div>
+                            <strong style="display: block; margin-bottom: 12px; color: var(--primary);">Frontend</strong>
+                            <p style="margin: 0;">HTML5 / CSS3</p>
+                            <p style="margin: 8px 0;">JavaScript (Vanilla)</p>
+                            <p style="margin: 8px 0;">Responsive Design</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 40px; padding: 30px; background: var(--bg-light); border-radius: 14px;">
+                    <h3>✨ Key Features</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+                        <p>✅ Real-time spam detection</p>
+                        <p>✅ Batch file processing</p>
+                        <p>✅ Confidence scoring</p>
+                        <p>✅ Prediction history</p>
+                        <p>✅ Analytics dashboard</p>
+                        <p>✅ Example messages</p>
+                        <p>✅ Professional UI</p>
+                        <p>✅ CSV export</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Example messages
+        const spamExamples = [
+            { title: "Prize Winner", text: "Congratulations! You've won $1,000,000! Click here to claim your prize now!" },
+            { title: "Account Alert", text: "URGENT: Your account has been compromised. Click this link immediately to verify your identity." },
+            { title: "Drug Offer", text: "Buy cheap Viagra online! No prescription needed. Discreet delivery." },
+            { title: "Fake Prize", text: "You have been selected as a lucky winner! Claim your FREE IPHONE today!!!" },
+            { title: "Scam", text: "Nigerian Prince needs your help. Immediate payment of $50,000 required. Great returns guaranteed!" }
+        ];
+
+        const hamExamples = [
+            { title: "Meeting", text: "Hi John, I hope this email finds you well. Let's schedule a meeting to discuss the project." },
+            { title: "Order", text: "Your order #12345 has been shipped. Track it here: example.com/tracking" },
+            { title: "Newsletter", text: "Welcome to our newsletter! Here are this week's top stories." },
+            { title: "Follow-up", text: "Hi, I wanted to follow up on our conversation yesterday about the Q3 proposal." },
+            { title: "Receipt", text: "Thank you for your purchase! Your receipt is attached. Have a great day!" }
+        ];
+
+        let predictions = [];
+
+        // Populate example cards
+        function populateExamples() {
+            const spamGrid = document.getElementById('spamExamples');
+            const hamGrid = document.getElementById('hamExamples');
+
+            spamExamples.forEach((ex, idx) => {
+                const card = createExampleCard(ex.title, ex.text, `spam-${idx}`);
+                spamGrid.appendChild(card);
+            });
+
+            hamExamples.forEach((ex, idx) => {
+                const card = createExampleCard(ex.title, ex.text, `ham-${idx}`);
+                hamGrid.appendChild(card);
+            });
+        }
+
+        function createExampleCard(title, text, id) {
+            const card = document.createElement('div');
+            card.className = 'example-card';
+            card.innerHTML = `<div class="example-title">📩 ${title}</div><div class="example-text">${text.substring(0, 100)}...</div>`;
+            card.addEventListener('click', () => predictMessage(text));
+            return card;
+        }
+
+        // Tab switching - Handle both ribbon and regular nav buttons
+        function setupTabSwitching() {
+            const allNavBtns = document.querySelectorAll('.nav-btn, .ribbon-nav-btn');
+            
+            allNavBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.dataset.tab;
+                    
+                    // Remove active from all buttons
+                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.ribbon-nav-btn').forEach(b => b.classList.remove('active'));
+                    
+                    // Hide all tabs
+                    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                    
+                    // Add active to clicked button
+                    btn.classList.add('active');
+                    
+                    // Show active tab
+                    document.getElementById(tabName).classList.add('active');
+                    
+                    if (tabName === 'analytics') updateAnalytics();
+                });
+            });
+        }
+
+        // Update ribbon stats
+        function updateRibbonStats() {
+            document.getElementById('ribbon-total').textContent = predictions.length;
+            const spam = predictions.filter(p => p.label === 'SPAM').length;
+            const legit = predictions.filter(p => p.label === 'HAM').length;
+            document.getElementById('ribbon-spam').textContent = spam;
+            document.getElementById('ribbon-legit').textContent = legit;
+        }
+
+        // Character counter
+        document.getElementById('messageInput').addEventListener('input', (e) => {
+            const count = e.target.value.length;
+            document.getElementById('charCount').textContent = `${count} ${count === 1 ? 'character' : 'characters'}`;
+        });
+
+        // Predict form
+        document.getElementById('predictForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = document.getElementById('messageInput').value.trim();
+            
+            if (!message) {
+                showAlert('Please enter a message', 'error');
+                return;
+            }
+            await predictMessage(message);
+        });
+
+        // Predict message
+        async function predictMessage(message) {
+            const loading = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+            
+            loading.classList.add('show');
+            resultContainer.classList.remove('show');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: message })
+                });
+
+                if (!response.ok) throw new Error('Prediction failed');
+                
+                const result = await response.json();
+                displayPredictionResult(result, message);
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        function displayPredictionResult(result, message) {
+            const resultContainer = document.getElementById('resultContainer');
+            const resultTitle = document.getElementById('resultTitle');
+            const confidenceValue = document.getElementById('confidenceValue');
+            const progressFill = document.getElementById('progressFill');
+            const resultDetails = document.getElementById('resultDetails');
+
+            const label = result.label.toUpperCase();
+            const confidence = result.confidence;
+            const isSpam = label === 'SPAM';
+
+            resultContainer.className = 'result-container show';
+            if (isSpam) {
+                resultContainer.classList.add('result-spam');
+                resultContainer.classList.remove('result-ham');
+                resultTitle.innerHTML = '🚨 SPAM DETECTED!';
+            } else {
+                resultContainer.classList.add('result-ham');
+                resultContainer.classList.remove('result-spam');
+                resultTitle.innerHTML = '✅ LEGITIMATE';
+            }
+
+            confidenceValue.innerHTML = `${(confidence * 100).toFixed(1)}%`;
+            progressFill.style.width = `${confidence * 100}%`;
+            progressFill.innerHTML = `${(confidence * 100).toFixed(0)}%`;
+
+            const words = message.split(/\s+/).length;
+            const certainty = confidence > 0.9 ? 'Very High' : confidence > 0.7 ? 'High' : 'Medium';
+
+            resultDetails.innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">📋 Classification</div>
+                    <div class="detail-value">${label}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">🎯 Certainty</div>
+                    <div class="detail-value">${certainty}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">📊 Characters</div>
+                    <div class="detail-value">${message.length}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">📝 Words</div>
+                    <div class="detail-value">${words}</div>
+                </div>
+            `;
+
+            predictions.push({ timestamp: new Date().toLocaleString(), message: message.substring(0, 50), label, confidence });
+            updateRibbonStats();
+            showAlert(`Message classified as ${label}`, 'success');
+        }
+
+        function showAlert(message, type) {
+            // Implementation would go here
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function updateAnalytics() {
+            // Implementation would go here
+        }
+
+        // Initialize
+        setupTabSwitching();
+        populateExamples();
+        updateRibbonStats();
+    </script>
+</body>
+</html>
