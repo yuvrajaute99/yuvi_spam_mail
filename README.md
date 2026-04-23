@@ -141,6 +141,11 @@ export AZURE_STORAGE_ACCOUNT_NAME=your_storage_account_name
 export AZURE_STORAGE_CONTAINER_NAME=spam-detector-data
 ```
 
+3. **What is stored**
+   - Single message predictions are uploaded automatically when the Streamlit UI is used
+   - FastAPI prediction requests are also stored as cloud records when configured
+   - Batch and history uploads can be saved manually from the UI
+
 3. **Authenticate with Azure**
 ```bash
 # Using Azure CLI

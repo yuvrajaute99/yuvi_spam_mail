@@ -11,6 +11,7 @@ import logging
 from datetime import datetime
 from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
+from azure.core.exceptions import ResourceExistsError, AzureError
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class CloudStorage:
                     account_url=account_url,
                     credential=credential
                 )
+                self._ensure_container_exists()
                 logger.info("Azure Blob Storage client initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize Azure Blob Storage: {e}")
@@ -42,6 +44,20 @@ class CloudStorage:
     def is_available(self) -> bool:
         """Check if cloud storage is available."""
         return self.blob_service_client is not None
+
+    def _ensure_container_exists(self):
+        """Create the container if it does not already exist."""
+        if not self.is_available():
+            return
+
+        try:
+            container_client = self.blob_service_client.get_container_client(self.container_name)
+            container_client.create_container()
+            logger.info(f"Azure container '{self.container_name}' created.")
+        except ResourceExistsError:
+            logger.info(f"Azure container '{self.container_name}' already exists.")
+        except AzureError as e:
+            logger.warning(f"Could not create or access Azure container '{self.container_name}': {e}")
 
     def upload_prediction_data(self, prediction_history: list, stats: dict) -> bool:
         """
@@ -72,7 +88,7 @@ class CloudStorage:
             }
 
             # Create blob name with timestamp
-            blob_name = f"spam_detector_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            blob_name = f"spam_detector_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
             # Convert to JSON
             json_data = json.dumps(data, indent=2)
@@ -89,6 +105,42 @@ class CloudStorage:
 
         except Exception as e:
             logger.error(f"Failed to upload data to cloud: {e}")
+            return False
+
+    def upload_single_prediction(self, prediction_record: dict) -> bool:
+        """
+        Upload a single prediction record to cloud storage.
+
+        Parameters
+        ----------
+        prediction_record : dict
+            A single prediction entry containing message, label, confidence, and timestamp.
+
+        Returns
+        -------
+        bool
+            True if upload successful, False otherwise
+        """
+        if not self.is_available():
+            logger.warning("Cloud storage not available.")
+            return False
+
+        try:
+            data = {
+                "timestamp": datetime.now().isoformat(),
+                "prediction": prediction_record
+            }
+            blob_name = f"prediction_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.json"
+            json_data = json.dumps(data, indent=2)
+            blob_client = self.blob_service_client.get_blob_client(
+                container=self.container_name,
+                blob=blob_name
+            )
+            blob_client.upload_blob(json_data, overwrite=True)
+            logger.info(f"Successfully uploaded single prediction to {blob_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to upload single prediction to cloud: {e}")
             return False
 
     def upload_batch_results(self, batch_results: list, filename: str = None) -> bool:

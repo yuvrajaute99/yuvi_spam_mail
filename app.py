@@ -23,7 +23,6 @@ st.set_page_config(
     page_title="Email / SMS Spam Detector",
     page_icon="📧",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 # ---------- Custom CSS for better styling ----------
@@ -253,76 +252,11 @@ if "ham_count" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state.current_page = "🎯 Predict"
 
-# ---------- Sidebar (only show on non-Predict pages) ----------
-if st.session_state.get("current_page") != "🎯 Predict":
-    with st.sidebar:
-        st.markdown("""
-            <div style="text-align: center; padding: 20px;">
-                <h1 style="margin: 0; color: #667eea;">🔍</h1>
-                <h2 style="margin: 5px 0; font-size: 1.5em; color: #2c3e50;">SPAM DETECTOR</h2>
-                <p style="color: #666; margin: 0;">Smart Email & SMS Classification</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        st.markdown("<h3 style='text-align: center; color: #667eea;'>📋 Navigation</h3>", unsafe_allow_html=True)
-        page_options = ["🎯 Predict", "📊 Analytics", "📚 Examples", "ℹ️ About"]
-        current_index = page_options.index(st.session_state.get("current_page", "🎯 Predict"))
-        page = st.radio("Select Page:", page_options, index=current_index, label_visibility="collapsed")
-        
-        st.divider()
-        
-        st.markdown("<h3 style='text-align: center; color: #667eea;'>📈 Quick Stats</h3>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("🚨 Spam", st.session_state.spam_count)
-        with col2:
-            st.metric("✅ Legit", st.session_state.ham_count)
-        with col3:
-            st.metric("📊 Total", st.session_state.total_predictions)
-        
-        st.divider()
-        
-        if st.button("🗑️ Clear History", use_container_width=True):
-            st.session_state.prediction_history = []
-            st.session_state.total_predictions = 0
-            st.session_state.spam_count = 0
-            st.session_state.ham_count = 0
-            st.success("✅ History cleared!")
-        
-        st.divider()
-        
-        # Cloud Storage Section
-        st.markdown("<h3 style='text-align: center; color: #667eea;'>☁️ Cloud Storage</h3>", unsafe_allow_html=True)
-        
-        if cloud_storage.is_available():
-            if st.button("📤 Upload Data to Cloud", use_container_width=True):
-                stats = {
-                    "total_predictions": st.session_state.total_predictions,
-                    "spam_count": st.session_state.spam_count,
-                    "ham_count": st.session_state.ham_count
-                }
-                if cloud_storage.upload_prediction_data(st.session_state.prediction_history, stats):
-                    st.success("✅ Data uploaded to cloud successfully!")
-                else:
-                    st.error("❌ Failed to upload data to cloud.")
-        else:
-            st.warning("☁️ Cloud storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME environment variable.")
-        
-        st.divider()
-        
-        st.markdown("""
-            <div style="text-align: center; padding: 20px; background: rgba(102, 126, 234, 0.1); border-radius: 10px; margin-top: 20px;">
-                <p style="margin: 0; font-size: 0.9em; color: #666;">
-                    ⚡ <strong>Production Ready</strong><br>
-                    Powered by scikit-learn & NLTK
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-else:
-    # For Predict page, get page selection from buttons (no sidebar)
-    page = "🎯 Predict"
+page_options = ["🎯 Predict", "📊 Analytics", "📚 Examples", "ℹ️ About"]
+current_index = page_options.index(st.session_state.get("current_page", "🎯 Predict"))
+page = st.radio("", page_options, index=current_index, horizontal=True, label_visibility="collapsed")
+st.session_state.current_page = page
+st.markdown("---")
 
 # ---------- PAGE: PREDICT ----------
 if page == "🎯 Predict":
@@ -369,6 +303,11 @@ if page == "🎯 Predict":
             st.rerun()
     
     st.markdown("---")
+
+    if cloud_storage.is_available():
+        st.success("☁️ Cloud storage is connected. Predictions and messages can be stored in Azure Blob Storage.")
+    else:
+        st.info("☁️ Cloud storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME to enable Azure uploads.")
     
     # Quick Stats Section Below Navigation
     st.markdown("""
@@ -474,13 +413,27 @@ if page == "🎯 Predict":
                         else:
                             st.session_state.ham_count += 1
                         
-                        # Add to history
-                        st.session_state.prediction_history.append({
+                        # Create history entry with full message text
+                        history_entry = {
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "message": input_text[:50] + "..." if len(input_text) > 50 else input_text,
+                            "message": input_text,
                             "label": label,
                             "confidence": confidence
-                        })
+                        }
+                        st.session_state.prediction_history.append(history_entry)
+
+                        if cloud_storage.is_available():
+                            cloud_success = cloud_storage.upload_single_prediction({
+                                "timestamp": history_entry["timestamp"],
+                                "message": input_text,
+                                "label": label,
+                                "confidence": confidence,
+                                "source": "streamlit"
+                            })
+                            if cloud_success:
+                                st.success("☁️ Single prediction saved to cloud.")
+                            else:
+                                st.warning("⚠️ Cloud upload failed for this prediction.")
                     
                     # Display result with custom styling
                     st.markdown("---")
@@ -746,6 +699,20 @@ elif page == "📊 Analytics":
             st.markdown("<h3 class='section-title'>📜 Prediction History</h3>", unsafe_allow_html=True)
             history_df = pd.DataFrame(st.session_state.prediction_history)
             st.dataframe(history_df, use_container_width=True, hide_index=True)
+
+            if cloud_storage.is_available():
+                if st.button("☁️ Save History to Cloud", use_container_width=True, key="cloud_save_history"):
+                    stats = {
+                        "total_predictions": st.session_state.total_predictions,
+                        "spam_count": st.session_state.spam_count,
+                        "ham_count": st.session_state.ham_count
+                    }
+                    if cloud_storage.upload_prediction_data(st.session_state.prediction_history, stats):
+                        st.success("✅ Prediction history uploaded to cloud successfully.")
+                    else:
+                        st.error("❌ Failed to upload prediction history to cloud.")
+            else:
+                st.info("☁️ Cloud storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME to enable history upload.")
 
 # ---------- PAGE: EXAMPLES ----------
 elif page == "📚 Examples":

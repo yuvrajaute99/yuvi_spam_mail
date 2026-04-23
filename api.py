@@ -14,11 +14,13 @@ Usage:
 
 import logging
 import os
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from predict import predict
+from cloud_storage import cloud_storage
 
 logging.basicConfig(
     level=logging.INFO,
@@ -92,5 +94,14 @@ async def predict_endpoint(request: PredictRequest):
     except Exception as exc:
         logger.exception("Unexpected error during prediction")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+    if cloud_storage.is_available():
+        cloud_storage.upload_single_prediction({
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "message": text,
+            "label": result["label"],
+            "confidence": result["confidence"],
+            "source": "api"
+        })
 
     return PredictResponse(**result)
