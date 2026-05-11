@@ -42,7 +42,7 @@ This is a **production-ready spam detection system** that uses advanced machine 
 | 📚 **Examples** | Pre-loaded spam/legitimate samples for testing |
 | 💾 **CSV Export** | Download batch results for further analysis |
 | ⚠️ **Harmfulness Scoring** | Percentage-based harm assessment for spam messages |
-| ☁️ **Cloud Storage** | Store prediction data in Azure Blob Storage |
+| ☁️ **Cloud Storage** | Store prediction data in Azure Blob Storage or Google Drive |
 
 ---
 
@@ -123,8 +123,9 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 
 ### ☁️ Cloud Storage Setup (Optional)
 
-To enable cloud storage for prediction data and results:
+To enable cloud storage for prediction data and results, choose one of the supported providers:
 
+#### Azure Blob Storage
 1. **Create Azure Storage Account**
    - Go to [Azure Portal](https://portal.azure.com)
    - Create a Storage Account
@@ -133,18 +134,15 @@ To enable cloud storage for prediction data and results:
 2. **Set Environment Variables**
 ```bash
 # Windows PowerShell
+$env:CLOUD_STORAGE_PROVIDER="azure"
 $env:AZURE_STORAGE_ACCOUNT_NAME="your_storage_account_name"
 $env:AZURE_STORAGE_CONTAINER_NAME="spam-detector-data"
 
 # Linux/Mac
+export CLOUD_STORAGE_PROVIDER=azure
 export AZURE_STORAGE_ACCOUNT_NAME=your_storage_account_name
 export AZURE_STORAGE_CONTAINER_NAME=spam-detector-data
 ```
-
-3. **What is stored**
-   - Single message predictions are uploaded automatically when the Streamlit UI is used
-   - FastAPI prediction requests are also stored as cloud records when configured
-   - Batch and history uploads can be saved manually from the UI
 
 3. **Authenticate with Azure**
 ```bash
@@ -153,6 +151,40 @@ az login
 
 # OR set up managed identity for your deployment environment
 ```
+
+#### Google Drive
+1. **Create a Google Cloud service account**
+   - Go to the [Google Cloud Console](https://console.cloud.google.com)
+   - Create a service account with the `Drive API` enabled
+   - Download the service account JSON key file
+
+2. **Set Environment Variables**
+```bash
+# Windows PowerShell
+$env:CLOUD_STORAGE_PROVIDER="gdrive"
+$env:GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="C:\path\to\service-account.json"
+$env:GOOGLE_DRIVE_FOLDER_ID="your_drive_folder_id"  # optional
+$env:GOOGLE_DRIVE_ACCOUNT_EMAIL="unknowngraphics111@gmail.com"  # optional
+
+# Linux/Mac
+export CLOUD_STORAGE_PROVIDER=gdrive
+export GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE=/path/to/service-account.json
+export GOOGLE_DRIVE_FOLDER_ID=your_drive_folder_id  # optional
+export GOOGLE_DRIVE_ACCOUNT_EMAIL=unknowngraphics111@gmail.com  # optional
+```
+
+3. **What is stored**
+   - Single message predictions are uploaded automatically when the Streamlit UI is used
+   - Spam and ham prediction entries are saved as individual JSON files in Google Drive or Azure Blob Storage
+   - FastAPI prediction requests are also stored as cloud records when configured
+   - Batch and history uploads can be saved manually from the UI
+
+4. **Google Drive notes**
+   - `GOOGLE_DRIVE_ACCOUNT_EMAIL` lets a service account impersonate a Drive user when domain-wide delegation is configured
+   - If you only set a service account file, the file is uploaded to that service account's own Drive location
+   - Use `GOOGLE_DRIVE_FOLDER_ID` to keep files in a specific Drive folder
+
+If you do not configure cloud storage, uploads will remain local only.
 
 ---
 

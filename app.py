@@ -16,6 +16,9 @@ import streamlit as st
 import pandas as pd
 import io
 import json
+import os
+import re
+import hashlib
 from datetime import datetime
 
 # ---------- Page configuration ----------
@@ -234,6 +237,229 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
+def get_users_file_path() -> str:
+    return os.path.join(os.path.dirname(__file__), "users.json")
+
+
+def load_users() -> dict:
+    path = get_users_file_path()
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_users(users: dict) -> bool:
+    try:
+        with open(get_users_file_path(), "w", encoding="utf-8") as f:
+            json.dump(users, f, indent=2)
+        return True
+    except OSError:
+        return False
+
+
+try:
+    from streamlit.runtime.scriptrunner.script_runner import RerunException
+    from streamlit.runtime.scriptrunner_utils.script_requests import RerunData
+except Exception:
+    RerunException = None
+    RerunData = None
+
+
+def trigger_rerun() -> None:
+    if RerunException is not None and RerunData is not None:
+        raise RerunException(RerunData())
+    st.stop()
+
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+def is_valid_email(email: str) -> bool:
+    if not email or not isinstance(email, str):
+        return False
+    email = email.strip()
+    return bool(re.fullmatch(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", email))
+
+
+def show_authentication_form() -> None:
+    users = load_users()
+    if users:
+        auth_mode = st.radio(
+            "",
+            ["Login", "Register", "Forgot Password"],
+            index=0,
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+    else:
+        auth_mode = "Register"
+
+    if auth_mode == "Register":
+        st.markdown(
+            """
+            <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        border-radius: 15px; margin-bottom: 20px; color: white;">
+                <h1 style="margin: 0; font-size: 2.5em;">🔐 Create Account</h1>
+                <p style="margin: 10px 0 0 0; font-size: 1.05em; opacity: 0.9;">Register with your email id and a secure password.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        email = st.text_input(
+            "Email address",
+            placeholder="Enter email id",
+            key="registration_email",
+            label_visibility="collapsed",
+        )
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Enter password",
+            key="registration_password",
+            label_visibility="collapsed",
+        )
+        confirm_password = st.text_input(
+            "Confirm password",
+            type="password",
+            placeholder="Re-enter password",
+            key="registration_confirm_password",
+            label_visibility="collapsed",
+        )
+
+        st.caption("Use a valid email address and a secure password (minimum 6 characters).")
+
+        if st.button("🔐 Create Account", use_container_width=True, key="register_button"):
+            if not email or not email.strip():
+                st.error("⚠️ Please enter an email address.")
+            elif not is_valid_email(email):
+                st.error("⚠️ Please enter a valid email address.")
+            elif not password or len(password) < 6:
+                st.error("⚠️ Password must be at least 6 characters.")
+            elif password != confirm_password:
+                st.error("⚠️ Passwords do not match.")
+            elif email.strip().lower() in users:
+                st.error("⚠️ This email is already registered. Please log in.")
+            else:
+                users[email.strip().lower()] = {
+                    "email": email.strip(),
+                    "password": hash_password(password),
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                if save_users(users):
+                    st.session_state.user_authenticated = True
+                    st.session_state.user_email = email.strip()
+                    st.success(f"✅ Account created for {st.session_state.user_email}.")
+                    trigger_rerun()
+                else:
+                    st.error("❌ Unable to save your account. Please try again.")
+
+    elif auth_mode == "Forgot Password":
+        st.markdown(
+            """
+            <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        border-radius: 15px; margin-bottom: 20px; color: white;">
+                <h1 style="margin: 0; font-size: 2.5em;">🛠️ Forgot Password</h1>
+                <p style="margin: 10px 0 0 0; font-size: 1.05em; opacity: 0.9;">Reset your password using your registered email id.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        email = st.text_input(
+            "Email address",
+            placeholder="Enter email id",
+            key="forgot_email",
+            label_visibility="collapsed",
+        )
+        new_password = st.text_input(
+            "New password",
+            type="password",
+            placeholder="Enter new password",
+            key="forgot_password",
+            label_visibility="collapsed",
+        )
+        confirm_password = st.text_input(
+            "Confirm new password",
+            type="password",
+            placeholder="Re-enter new password",
+            key="forgot_confirm_password",
+            label_visibility="collapsed",
+        )
+
+        st.caption("Enter your registered email and choose a new password.")
+
+        if st.button("🔁 Reset Password", use_container_width=True, key="reset_password_button"):
+            if not email or not email.strip():
+                st.error("⚠️ Please enter your registered email address.")
+            elif not is_valid_email(email):
+                st.error("⚠️ Please enter a valid email address.")
+            elif not new_password or len(new_password) < 6:
+                st.error("⚠️ New password must be at least 6 characters.")
+            elif new_password != confirm_password:
+                st.error("⚠️ Passwords do not match.")
+            elif email.strip().lower() not in users:
+                st.error("⚠️ No account found for this email. Please register first.")
+            else:
+                users[email.strip().lower()]["password"] = hash_password(new_password)
+                if save_users(users):
+                    st.success("✅ Password reset successfully. Please log in with your new password.")
+                else:
+                    st.error("❌ Unable to reset your password. Please try again.")
+
+    else:
+        st.markdown(
+            """
+            <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        border-radius: 15px; margin-bottom: 20px; color: white;">
+                <h1 style="margin: 0; font-size: 2.5em;">🔓 Login to Access the Dashboard</h1>
+                <p style="margin: 10px 0 0 0; font-size: 1.05em; opacity: 0.9;">Enter your registered email id and password.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        email = st.text_input(
+            "Email address",
+            placeholder="Enter email id",
+            key="login_email",
+            label_visibility="collapsed",
+        )
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Enter password",
+            key="login_password",
+            label_visibility="collapsed",
+        )
+        st.caption("Use the email and password you registered with.")
+
+        if st.button("🔓 Login", use_container_width=True, key="login_button"):
+            if not email or not email.strip():
+                st.error("⚠️ Please enter your email address.")
+            elif not password:
+                st.error("⚠️ Please enter your password.")
+            elif not is_valid_email(email):
+                st.error("⚠️ Please enter a valid email address.")
+            else:
+                user_record = users.get(email.strip().lower())
+                if not user_record:
+                    st.error("⚠️ No account found for this email. Please register first.")
+                elif user_record["password"] != hash_password(password):
+                    st.error("⚠️ Incorrect password. Please try again.")
+                else:
+                    st.session_state.user_authenticated = True
+                    st.session_state.user_email = user_record["email"]
+                    st.success(f"✅ Logged in as {st.session_state.user_email}.")
+                    trigger_rerun()
+
+
 # ---------- Lazy-import predict (loads model once) ----------
 from predict import predict  # noqa: E402  – imported after set_page_config
 from cloud_storage import cloud_storage  # noqa: E402
@@ -247,6 +473,15 @@ if "spam_count" not in st.session_state:
     st.session_state.spam_count = 0
 if "ham_count" not in st.session_state:
     st.session_state.ham_count = 0
+if "user_authenticated" not in st.session_state:
+    st.session_state.user_authenticated = False
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
+
+# ---------- Guard access until login or registration is complete ----------
+if not st.session_state.user_authenticated:
+    show_authentication_form()
+    st.stop()
 
 # ---------- Initialize session state for page navigation ----------
 if "current_page" not in st.session_state:
@@ -256,6 +491,16 @@ page_options = ["🎯 Predict", "📊 Analytics", "📚 Examples", "ℹ️ About
 current_index = page_options.index(st.session_state.get("current_page", "🎯 Predict"))
 page = st.radio("", page_options, index=current_index, horizontal=True, label_visibility="collapsed")
 st.session_state.current_page = page
+
+user_col, logout_col = st.columns([3, 1])
+with user_col:
+    st.markdown(f"**Logged in as:** {st.session_state.user_email}")
+with logout_col:
+    if st.button("🔓 Logout", use_container_width=True, key="logout_button"):
+        st.session_state.user_authenticated = False
+        st.session_state.user_email = ""
+        trigger_rerun()
+
 st.markdown("---")
 
 # ---------- PAGE: PREDICT ----------
@@ -282,32 +527,34 @@ if page == "🎯 Predict":
         if st.button("🎯 Predict", use_container_width=True, 
                     help="Analyze single messages or process batches"):
             st.session_state.current_page = "🎯 Predict"
-            st.rerun()
+            trigger_rerun()
     
     with nav_col2:
         if st.button("📊 Analytics", use_container_width=True,
                     help="View prediction statistics and history"):
             st.session_state.current_page = "📊 Analytics"
-            st.rerun()
+            trigger_rerun()
     
     with nav_col3:
         if st.button("📚 Examples", use_container_width=True,
                     help="Browse sample messages and test cases"):
             st.session_state.current_page = "📚 Examples"
-            st.rerun()
+            trigger_rerun()
     
     with nav_col4:
         if st.button("ℹ️ About", use_container_width=True,
                     help="Learn about the model and technology"):
             st.session_state.current_page = "ℹ️ About"
-            st.rerun()
+            trigger_rerun()
     
     st.markdown("---")
 
     if cloud_storage.is_available():
-        st.success("☁️ Cloud storage is connected. Predictions and messages can be stored in Azure Blob Storage.")
+        st.success(f"☁️ Cloud storage is connected. Predictions and messages can be stored in {cloud_storage.storage_provider_name}.")
     else:
-        st.info("☁️ Cloud storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME to enable Azure uploads.")
+        st.info(
+            ""
+        )
     
     # Quick Stats Section Below Navigation
     st.markdown("""
@@ -423,15 +670,14 @@ if page == "🎯 Predict":
                         st.session_state.prediction_history.append(history_entry)
 
                         if cloud_storage.is_available():
-                            cloud_success = cloud_storage.upload_single_prediction({
-                                "timestamp": history_entry["timestamp"],
-                                "message": input_text,
-                                "label": label,
-                                "confidence": confidence,
-                                "source": "streamlit"
-                            })
+                            cloud_success = cloud_storage.upload_classification_entry(
+                                message=input_text,
+                                label=label,
+                                confidence=confidence,
+                                user_email=st.session_state.user_email or None,
+                            )
                             if cloud_success:
-                                st.success("☁️ Single prediction saved to cloud.")
+                                st.success("☁️ Single prediction saved to Google Drive.")
                             else:
                                 st.warning("⚠️ Cloud upload failed for this prediction.")
                     
@@ -643,7 +889,9 @@ if page == "🎯 Predict":
                                         else:
                                             st.error("❌ Failed to upload batch results to cloud.")
                             elif results:  # Only show warning if there are results
-                                st.warning("☁️ Cloud storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME environment variable to enable cloud uploads.")
+                                st.warning(
+                                    "☁️ Cloud storage not configured. Set CLOUD_STORAGE_PROVIDER to 'azure' or 'gdrive' and provider-specific credentials."
+                                )
             except Exception as e:
                 st.error(f"❌ Error processing file: {e}")
 
@@ -712,7 +960,9 @@ elif page == "📊 Analytics":
                     else:
                         st.error("❌ Failed to upload prediction history to cloud.")
             else:
-                st.info("☁️ Cloud storage not configured. Set AZURE_STORAGE_ACCOUNT_NAME to enable history upload.")
+                st.info(
+                    "☁️ Cloud storage not configured. Set CLOUD_STORAGE_PROVIDER to 'azure' or 'gdrive' and provider-specific credentials."
+                )
 
 # ---------- PAGE: EXAMPLES ----------
 elif page == "📚 Examples":
